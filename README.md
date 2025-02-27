@@ -6,11 +6,12 @@ Projeto que visa testar diversos cenários de rotas distribuídas entre roteador
 ## **Topologia**
 
 A topologia é a mesma para todos os cenários.
-![[Pasted image 20250224112044.png]]
+![topologia](Pasted%20image%2020250224112044.png)
+
 
 A **LAN** cloud segue sendo um **linux Vrin** configurado para que ele possa gerar rotas ao ambiente.
 
-![[Pasted image 20250224113245.png]]
+![topologia](Pasted%20image%2020250224113245.png)
 
 configurações dos protocolos em cada roteador.
 
