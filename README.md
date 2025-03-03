@@ -274,3 +274,117 @@ C       10.2.2.0 is directly connected, FastEthernet0/0
 
 ```
 
+## Cenário 3
+
+No roteador `R2`, estamos redistribuindo rotas aprendidas pelo **BGP** para **OSPF**, mas queremos aumentar a métrica delas para **200** através de **route-map**.
+
+### configuração da redistribuição (BGP -> OSPF) no R2
+#### R2
+
+```julia
+R2#show running-config | section ospf
+ ip ospf 2 area 0
+router ospf 2
+ router-id 2.2.2.2
+ log-adjacency-changes
+ redistribute bgp 65002 metric 100 subnets
+
+```
+
+
+### Configuração
+#### R2
+
+```julia
+conf t
+router bgp 65002
+no neighbor 192.168.1.1 route-map FILTRO-BGP-REDES in
+end
+
+
+conf t
+access-list 10 permit 172.16.1.0 0.0.0.255
+route-map FILTRO-METRIC permit 10
+match ip address 10 
+set metric 200
+exit
+router ospf 2
+no redistribute bgp 65002 metric 100 subnets
+redistribute bgp 65002 subnets route-map FILTRO-METRIC
+end
+
+conf t
+ip prefix-list LIBERA-TODAS seq 10 permit 0.0.0.0/0 le 32
+route-map FILTRO-METRIC permit 20
+match ip address prefix-list LIBERA-TODAS
+end
+
+```
+
+### Testes e validação
+
+#### R4
+
+```julia
+R4#show ip route 
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route
+
+Gateway of last resort is not set
+
+     2.0.0.0/32 is subnetted, 1 subnets
+O E2    2.2.2.2 [110/1] via 10.2.2.2, 00:01:06, FastEthernet0/0
+     172.16.0.0/32 is subnetted, 15 subnets
+O E2    172.16.1.13 [110/200] via 10.2.2.2, 02:02:51, FastEthernet0/0
+O E2    172.16.1.12 [110/200] via 10.2.2.2, 02:02:51, FastEthernet0/0
+O E2    172.16.1.14 [110/200] via 10.2.2.2, 02:02:51, FastEthernet0/0
+O E2    172.16.1.9 [110/200] via 10.2.2.2, 02:02:51, FastEthernet0/0
+O E2    172.16.1.8 [110/200] via 10.2.2.2, 02:02:51, FastEthernet0/0
+O E2    172.16.1.11 [110/200] via 10.2.2.2, 02:02:52, FastEthernet0/0
+O E2    172.16.1.10 [110/200] via 10.2.2.2, 02:02:52, FastEthernet0/0
+O E2    172.16.1.5 [110/200] via 10.2.2.2, 02:02:52, FastEthernet0/0
+O E2    172.16.1.4 [110/200] via 10.2.2.2, 02:02:52, FastEthernet0/0
+O E2    172.16.1.7 [110/200] via 10.2.2.2, 02:02:52, FastEthernet0/0
+O E2    172.16.1.6 [110/200] via 10.2.2.2, 02:02:54, FastEthernet0/0
+O E2    172.16.1.1 [110/200] via 10.2.2.2, 02:02:54, FastEthernet0/0
+O E2    172.16.1.0 [110/200] via 10.2.2.2, 02:02:54, FastEthernet0/0
+O E2    172.16.1.3 [110/200] via 10.2.2.2, 02:02:54, FastEthernet0/0
+O E2    172.16.1.2 [110/200] via 10.2.2.2, 02:02:54, FastEthernet0/0
+     10.0.0.0/24 is subnetted, 2 subnets
+C       10.2.2.0 is directly connected, FastEthernet0/0
+O E2    10.1.1.0 [110/1] via 10.2.2.2, 00:01:09, FastEthernet0/0
+
+```
+
+* As métricas na tabela de **OSPF** foram todas alteradas para 200.
+#### R2
+
+```julia
+R2#show running-config | section ospf
+ ip ospf 2 area 0
+router ospf 2
+ router-id 2.2.2.2
+ log-adjacency-changes
+ redistribute bgp 65002 subnets route-map FILTRO-METRIC
+R2#show access-lists                 
+Standard IP access list 10
+    10 permit 172.16.1.0, wildcard bits 0.0.0.255 (15 matches)
+R2#show route-map FILTRO-METRIC
+route-map FILTRO-METRIC, permit, sequence 10
+  Match clauses:
+    ip address (access-lists): 10 
+  Set clauses:
+    metric 200
+  Policy routing matches: 0 packets, 0 bytes
+route-map FILTRO-METRIC, permit, sequence 20
+  Match clauses:
+    ip address prefix-lists: LIBERA-TODAS 
+  Set clauses:
+  Policy routing matches: 0 packets, 0 bytes
+```
+
