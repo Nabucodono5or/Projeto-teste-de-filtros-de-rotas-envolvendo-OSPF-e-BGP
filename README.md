@@ -605,3 +605,121 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 
 ```
 
+## Cenário 6
+Aqui decidimos por restaurar o filtro na redistribuição das rotas apendidas pelo OSPF do BGP, para isso cofiguramos um filtro no comando `redistribute bgp` do OSPF no router `R2`.
+
+### Configuração
+
+#### R2
+```julia
+conf t
+no route-map FILTRO-METRIC permit sequence 10
+route-map FILTRO-METRIC deny 10
+match ip address 10
+end
+```
+
+Como já tínhamos uma `rote-map` configurada para alterar as métricas a removemos e criamos uma nova, mas utilizando a mesma ACL, porém no papel de bloqueio.
+
+### Testes e Validação
+
+```julia
+R2#sh ip route 
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route
+
+Gateway of last resort is 192.168.1.1 to network 0.0.0.0
+
+     172.16.0.0/32 is subnetted, 15 subnets
+B       172.16.1.13 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.12 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.14 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.9 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.8 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.11 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.10 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.5 [20/0] via 192.168.1.1, 00:48:18
+B       172.16.1.4 [20/0] via 192.168.1.1, 00:48:19
+B       172.16.1.7 [20/0] via 192.168.1.1, 00:48:19
+B       172.16.1.6 [20/0] via 192.168.1.1, 00:48:19
+B       172.16.1.1 [20/0] via 192.168.1.1, 00:48:19
+B       172.16.1.0 [20/0] via 192.168.1.1, 00:48:20
+B       172.16.1.3 [20/0] via 192.168.1.1, 00:48:20
+B       172.16.1.2 [20/0] via 192.168.1.1, 00:48:20
+     10.0.0.0/24 is subnetted, 2 subnets
+C       10.2.2.0 is directly connected, FastEthernet0/0
+B       10.1.1.0 [20/0] via 192.168.1.1, 00:48:20
+C    192.168.1.0/24 is directly connected, FastEthernet0/1
+B*   0.0.0.0/0 [20/0] via 192.168.1.1, 00:48:20
+R2#
+R2#sh rou
+R2#sh route-map FILTRO-METRIC
+route-map FILTRO-METRIC, deny, sequence 10
+  Match clauses:
+    ip address (access-lists): 10 
+  Set clauses:
+  Policy routing matches: 0 packets, 0 bytes
+route-map FILTRO-METRIC, permit, sequence 20
+  Match clauses:
+    ip address prefix-lists: DEFULT-ROTA 
+  Set clauses:
+  Policy routing matches: 0 packets, 0 bytes
+R2#
+R2#
+R2#sh acc
+R2#sh ip acces
+R2#sh ip access-lists 10
+Standard IP access list 10
+    10 permit 172.16.1.0, wildcard bits 0.0.0.255 (30 matches)
+
+```
+
+
+#### R4
+
+```julia
+R4#sh ip route 
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route
+
+Gateway of last resort is not set
+
+     10.0.0.0/24 is subnetted, 2 subnets
+C       10.2.2.0 is directly connected, FastEthernet0/0
+O E2    10.1.1.0 [110/1] via 10.2.2.2, 00:28:50, FastEthernet0/0
+R4#
+R4#
+R4#sh ip osp
+R4#sh ip ospf data
+R4#sh ip ospf database 
+
+            OSPF Router with ID (4.4.4.4) (Process ID 2)
+
+		Router Link States (Area 0)
+
+Link ID         ADV Router      Age         Seq#       Checksum Link count
+2.2.2.2         2.2.2.2         1156        0x80000004 0x0025D0 1
+4.4.4.4         4.4.4.4         1200        0x80000004 0x007870 1
+
+		Net Link States (Area 0)
+
+Link ID         ADV Router      Age         Seq#       Checksum
+10.2.2.1        4.4.4.4         1200        0x80000002 0x0057AA
+
+		Type-5 AS External Link States
+
+Link ID         ADV Router      Age         Seq#       Checksum Tag
+10.1.1.0        2.2.2.2         1741        0x80000003 0x009F16 65001
+
+```
+
